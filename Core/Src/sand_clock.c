@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "button_input.h"
+#include "buzzer.h"
 #include "display_text.h"
 #include "imu_orientation.h"
 #include "max7219_matrix.h"
@@ -33,7 +34,7 @@ static uint32_t led_last_toggle_ms = 0U;
 static uint32_t settings_save_at_ms = 0U;
 static bool led_state = false;
 static bool sand_empty_flag = true;
-static bool both_buttons_latched = false;
+static bool button_combo_active = false;
 static bool settings_dirty = false;
 static bool orientation_ready = false;
 static uint8_t orientation_valid_samples = 0U;
@@ -181,22 +182,42 @@ static void change_brightness(int8_t delta) {
     schedule_settings_save();
 }
 
+static bool external_button_presses_are_close(void) {
+    int32_t difference =
+        (int32_t)(button_up.pressed_at_ms - button_down.pressed_at_ms);
+
+    if (difference < 0) {
+        difference = -difference;
+    }
+
+    return (uint32_t)difference <= SAND_CLOCK_BUTTON_COMBO_MS;
+}
+
 static void update_buttons(uint32_t now_ms) {
     ButtonInput_Update(&button_up, now_ms);
     ButtonInput_Update(&button_down, now_ms);
     ButtonInput_Update(&button_key, now_ms);
 
-    bool both_pressed = ButtonInput_IsPressed(&button_up) &&
-                        ButtonInput_IsPressed(&button_down);
-    if (both_pressed && !both_buttons_latched) {
-        both_buttons_latched = true;
+    bool up_pressed = ButtonInput_IsPressed(&button_up);
+    bool down_pressed = ButtonInput_IsPressed(&button_down);
+
+    if (button_combo_active) {
         ButtonInput_ClearEvents(&button_up);
         ButtonInput_ClearEvents(&button_down);
-        reset_sand();
+
+        if (!up_pressed && !down_pressed) {
+            button_combo_active = false;
+        }
         return;
     }
-    if (!both_pressed) {
-        both_buttons_latched = false;
+
+    if (up_pressed && down_pressed &&
+        external_button_presses_are_close()) {
+        button_combo_active = true;
+        ButtonInput_ClearEvents(&button_up);
+        ButtonInput_ClearEvents(&button_down);
+        change_brightness(1);
+        return;
     }
 
     if (ButtonInput_ConsumeClick(&button_key)) {
@@ -271,9 +292,27 @@ static void update_sand_motion(void) {
         return;
     }
 
+    if (Buzzer_IsActive() && ImuOrientation_MotionDetected()) {
+        Buzzer_Stop();
+    }
+
     MAX7219_MatrixClear();
     SandSim_Step(&sand, (int16_t)(ImuOrientation_GetAngle() + 45));
     MAX7219_MatrixUpdate();
+}
+
+static bool source_chamber_is_empty(void) {
+    uint8_t first = ImuOrientation_GetDir() > 0 ? 0U : 8U;
+    uint8_t end = (uint8_t)(first + 8U);
+
+    for (uint8_t y = first; y < end; y++) {
+        for (uint8_t x = first; x < end; x++) {
+            if (SandSim_Get(&sand, x, y)) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 static void update_sand_fall(uint32_t now_ms) {
@@ -311,8 +350,9 @@ static void update_sand_fall(uint32_t now_ms) {
     if (pushed) {
         sand_empty_flag = false;
         MAX7219_MatrixUpdate();
-    } else if (!sand_empty_flag) {
+    } else if (!sand_empty_flag && source_chamber_is_empty()) {
         sand_empty_flag = true;
+        Buzzer_PlayAlarm();
     }
 }
 
@@ -320,6 +360,7 @@ void SandClock_Init(void) {
     SettingsStorageData stored;
 
     board_led_set(false);
+    Buzzer_Init();
 
     if (SettingsStorage_Load(&stored)) {
         settings.seconds = stored.seconds;
@@ -367,6 +408,7 @@ void SandClock_Tick(void) {
     uint32_t now_ms = HAL_GetTick();
 
     update_buttons(now_ms);
+    Buzzer_Update(now_ms);
     update_led(now_ms);
     update_settings_save(now_ms);
 

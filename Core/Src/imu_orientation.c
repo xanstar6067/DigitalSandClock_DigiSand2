@@ -29,9 +29,16 @@ static int16_t angle_deg = 0;
 static uint8_t mag = 0;
 static uint32_t last_update_ms = 0;
 static bool online = false;
+static bool have_previous_sample = false;
+static bool motion_detected = false;
 
 static uint32_t abs_i16(int16_t value) {
     return value < 0 ? (uint32_t)(-(int32_t)value) : (uint32_t)value;
+}
+
+static uint32_t axis_delta(int16_t current, int16_t previous) {
+    int32_t difference = (int32_t)current - (int32_t)previous;
+    return difference < 0 ? (uint32_t)(-difference) : (uint32_t)difference;
 }
 
 static bool acceleration_is_plausible(const MPU6000_Data_t *data) {
@@ -57,6 +64,8 @@ static int16_t mapped_axis(const AxisMap *map) {
 bool ImuOrientation_Init(void) {
     bool initialized = (MPU6000_Init() != 0U);
     online = false;
+    have_previous_sample = false;
+    motion_detected = false;
     last_update_ms = 0U;
     return initialized;
 }
@@ -72,12 +81,22 @@ bool ImuOrientation_Update(uint16_t period_ms) {
 
     if (MPU6000_ReadData(&data) != HAL_OK) {
         online = false;
+        motion_detected = false;
         return false;
     }
 
     if (!acceleration_is_plausible(&data)) {
         online = false;
+        motion_detected = false;
         return false;
+    }
+
+    uint32_t acceleration_delta = 0U;
+    if (have_previous_sample) {
+        acceleration_delta =
+            axis_delta(data.accel_x, raw_axes[0]) +
+            axis_delta(data.accel_y, raw_axes[1]) +
+            axis_delta(data.accel_z, raw_axes[2]);
     }
 
     online = true;
@@ -95,7 +114,22 @@ bool ImuOrientation_Update(uint16_t period_ms) {
     float x = (float)mapped_axis(&axis_x);
     float y = (float)mapped_axis(&axis_y);
     float deg = atan2f(x, y) * 57.2957795f;
-    angle_deg = (int16_t)(deg >= 0.0f ? deg + 0.5f : deg - 0.5f);
+    int16_t new_angle =
+        (int16_t)(deg >= 0.0f ? deg + 0.5f : deg - 0.5f);
+    int16_t angle_delta = (int16_t)abs(new_angle - angle_deg);
+    if (angle_delta > 180) {
+        angle_delta = (int16_t)(360 - angle_delta);
+    }
+
+    uint32_t gyro_sum = abs_i16(data.gyro_x) +
+                        abs_i16(data.gyro_y) +
+                        abs_i16(data.gyro_z);
+    motion_detected = have_previous_sample &&
+        ((uint16_t)angle_delta >= SAND_CLOCK_MOTION_ANGLE_DEG ||
+         acceleration_delta >= SAND_CLOCK_MOTION_ACCEL_DELTA ||
+         gyro_sum >= SAND_CLOCK_MOTION_GYRO_SUM);
+    angle_deg = new_angle;
+    have_previous_sample = true;
 
     return true;
 }
@@ -114,4 +148,8 @@ int8_t ImuOrientation_GetDir(void) {
 
 bool ImuOrientation_IsOnline(void) {
     return online;
+}
+
+bool ImuOrientation_MotionDetected(void) {
+    return motion_detected;
 }

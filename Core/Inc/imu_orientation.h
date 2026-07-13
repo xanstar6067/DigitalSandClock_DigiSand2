@@ -10,6 +10,6 @@ int16_t ImuOrientation_GetAngle(void);
 uint8_t ImuOrientation_GetMag(void);
 int8_t ImuOrientation_GetDir(void);
 bool ImuOrientation_IsOnline(void);
+bool ImuOrientation_MotionDetected(void);
 
 #endif /* INC_IMU_ORIENTATION_H_ */
-
