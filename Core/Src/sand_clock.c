@@ -35,6 +35,7 @@ static bool led_state = false;
 static bool sand_empty_flag = true;
 static bool both_buttons_latched = false;
 static bool settings_dirty = false;
+static bool orientation_ready = false;
 
 static bool time_expired(uint32_t now_ms, uint32_t target_ms) {
     return (int32_t)(now_ms - target_ms) >= 0;
@@ -135,6 +136,7 @@ static void reset_sand(void) {
         SandSim_Set(&sand, (uint8_t)(n % 8U), (uint8_t)(n / 8U), true);
     }
     sand_empty_flag = true;
+    last_fall_ms = HAL_GetTick();
     draw_sand();
 }
 
@@ -240,15 +242,27 @@ static void update_sand_motion(void) {
         update_period_ms = 90U;
     }
 
-    if (ImuOrientation_Update(update_period_ms)) {
-        MAX7219_MatrixClear();
-        SandSim_Step(&sand, (int16_t)(ImuOrientation_GetAngle() + 45));
-        MAX7219_MatrixUpdate();
+    if (!ImuOrientation_Update(update_period_ms)) {
+        return;
     }
+
+    if (!orientation_ready) {
+        orientation_ready = true;
+        reset_sand();
+        return;
+    }
+
+    MAX7219_MatrixClear();
+    SandSim_Step(&sand, (int16_t)(ImuOrientation_GetAngle() + 45));
+    MAX7219_MatrixUpdate();
 }
 
 static void update_sand_fall(uint32_t now_ms) {
     bool pushed = false;
+
+    if (!orientation_ready) {
+        return;
+    }
 
     if ((uint32_t)(now_ms - last_fall_ms) < fall_interval_ms) {
         return;
@@ -310,7 +324,8 @@ void SandClock_Init(void) {
                      SAND_CLOCK_UKEY_ACTIVE_LOW != 0);
 
     SandSim_Init(&sand, sand_bound, sand_set_display);
-    ImuOrientation_Init();
+    orientation_ready = ImuOrientation_Init() &&
+                        ImuOrientation_Update(0U);
 
     fall_interval_ms = calculate_fall_interval();
     last_fall_ms = HAL_GetTick();
@@ -336,4 +351,3 @@ void SandClock_Tick(void) {
     update_sand_motion();
     update_sand_fall(now_ms);
 }
-

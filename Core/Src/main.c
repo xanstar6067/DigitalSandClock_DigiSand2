@@ -314,11 +314,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : EXT_BTN1_Pin EXT_BTN2_Pin UKEY_Pin */
-  GPIO_InitStruct.Pin = EXT_BTN1_Pin|EXT_BTN2_Pin|UKEY_Pin;
+  /*Configure GPIO pins : EXT_BTN1_Pin EXT_BTN2_Pin */
+  GPIO_InitStruct.Pin = EXT_BTN1_Pin|EXT_BTN2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : UKEY_Pin */
+  GPIO_InitStruct.Pin = UKEY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(UKEY_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

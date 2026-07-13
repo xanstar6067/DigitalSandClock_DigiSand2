@@ -22,12 +22,15 @@
 
 #define SAND_CLOCK_LED_ACTIVE_LOW       1
 
-/* PA15 service key is connected to GND when pressed. */
-#define SAND_CLOCK_UKEY_ACTIVE_LOW      1
+/*
+ * The WeAct board KEY connects the shared PA14/PA15 package pad to 3.3 V.
+ * Its external 10 kOhm resistor pulls the line down when the key is released.
+ */
+#define SAND_CLOCK_UKEY_ACTIVE_LOW      0
 
 /*
- * MPU axis mapping. These values reproduce the AlexGyver sketch:
- *   screen X <- raw Y inverted
+ * MPU axis mapping. These values reproduce the original assembly:
+ *   screen X <- raw Y
  *   screen Y <- raw Z
  *   depth    <- raw X
  * Flip signs or axes here if the sensor is mounted differently.
