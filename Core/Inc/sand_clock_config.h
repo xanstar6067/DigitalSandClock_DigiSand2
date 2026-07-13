@@ -11,6 +11,7 @@
 #define SAND_CLOCK_BUTTON_HOLD_MS       700U
 #define SAND_CLOCK_BUTTON_STEP_MS       250U
 #define SAND_CLOCK_SETTINGS_SAVE_DELAY_MS 2000U
+#define SAND_CLOCK_MPU_POWERUP_DELAY_MS  2000U
 
 /*
  * STM32G031F6P6 has 32 KB flash arranged as 16 pages of 2 KB. The last page

@@ -30,6 +30,23 @@ static uint8_t mag = 0;
 static uint32_t last_update_ms = 0;
 static bool online = false;
 
+static uint32_t abs_i16(int16_t value) {
+    return value < 0 ? (uint32_t)(-(int32_t)value) : (uint32_t)value;
+}
+
+static bool acceleration_is_plausible(const MPU6000_Data_t *data) {
+    uint32_t magnitude_l1 = abs_i16(data->accel_x) +
+                            abs_i16(data->accel_y) +
+                            abs_i16(data->accel_z);
+
+    /*
+     * At the default +/-2 g range a stationary sensor measures about 16384
+     * counts. During a cold power ramp some modules acknowledge I2C before
+     * their measurement registers contain a usable vector.
+     */
+    return magnitude_l1 >= 6000U && magnitude_l1 <= 40000U;
+}
+
 static int16_t mapped_axis(const AxisMap *map) {
     if (map->axis > 2U) {
         return 0;
@@ -38,9 +55,10 @@ static int16_t mapped_axis(const AxisMap *map) {
 }
 
 bool ImuOrientation_Init(void) {
-    online = (MPU6000_Init() != 0U);
+    bool initialized = (MPU6000_Init() != 0U);
+    online = false;
     last_update_ms = 0U;
-    return online;
+    return initialized;
 }
 
 bool ImuOrientation_Update(uint16_t period_ms) {
@@ -53,6 +71,11 @@ bool ImuOrientation_Update(uint16_t period_ms) {
     last_update_ms = now_ms;
 
     if (MPU6000_ReadData(&data) != HAL_OK) {
+        online = false;
+        return false;
+    }
+
+    if (!acceleration_is_plausible(&data)) {
         online = false;
         return false;
     }
@@ -92,4 +115,3 @@ int8_t ImuOrientation_GetDir(void) {
 bool ImuOrientation_IsOnline(void) {
     return online;
 }
-

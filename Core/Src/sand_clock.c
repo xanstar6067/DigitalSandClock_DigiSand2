@@ -36,6 +36,8 @@ static bool sand_empty_flag = true;
 static bool both_buttons_latched = false;
 static bool settings_dirty = false;
 static bool orientation_ready = false;
+static uint8_t orientation_valid_samples = 0U;
+static uint32_t orientation_last_poll_ms = 0U;
 
 static bool time_expired(uint32_t now_ms, uint32_t target_ms) {
     return (int32_t)(now_ms - target_ms) >= 0;
@@ -233,6 +235,29 @@ static void update_led(uint32_t now_ms) {
 }
 
 static void update_sand_motion(void) {
+    if (!orientation_ready) {
+        uint32_t now_ms = HAL_GetTick();
+
+        if ((uint32_t)(now_ms - orientation_last_poll_ms) < 20U) {
+            return;
+        }
+        orientation_last_poll_ms = now_ms;
+
+        if (!ImuOrientation_Update(0U)) {
+            orientation_valid_samples = 0U;
+            return;
+        }
+
+        orientation_valid_samples++;
+        if (orientation_valid_samples < 3U) {
+            return;
+        }
+
+        orientation_ready = true;
+        reset_sand();
+        return;
+    }
+
     uint16_t update_period_ms = (uint16_t)(255U - ImuOrientation_GetMag());
 
     if (update_period_ms < 15U) {
@@ -243,12 +268,6 @@ static void update_sand_motion(void) {
     }
 
     if (!ImuOrientation_Update(update_period_ms)) {
-        return;
-    }
-
-    if (!orientation_ready) {
-        orientation_ready = true;
-        reset_sand();
         return;
     }
 
@@ -324,13 +343,24 @@ void SandClock_Init(void) {
                      SAND_CLOCK_UKEY_ACTIVE_LOW != 0);
 
     SandSim_Init(&sand, sand_bound, sand_set_display);
-    orientation_ready = ImuOrientation_Init() &&
-                        ImuOrientation_Update(0U);
+    orientation_ready = false;
+    orientation_valid_samples = 0U;
+    orientation_last_poll_ms = HAL_GetTick();
+
+    /*
+     * On external 5 V power the MPU module becomes operational noticeably
+     * later than the STM32. Give its regulator and oscillator time to settle
+     * before the first WHO_AM_I transaction.
+     */
+    HAL_Delay(SAND_CLOCK_MPU_POWERUP_DELAY_MS);
+    (void)ImuOrientation_Init();
+    orientation_last_poll_ms = HAL_GetTick();
 
     fall_interval_ms = calculate_fall_interval();
     last_fall_ms = HAL_GetTick();
 
-    reset_sand();
+    MAX7219_MatrixClear();
+    MAX7219_MatrixUpdate();
 }
 
 void SandClock_Tick(void) {
