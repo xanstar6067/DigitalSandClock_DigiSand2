@@ -49,4 +49,11 @@
 #define SAND_CLOCK_DISPLAY_MIRROR_X     0
 #define SAND_CLOCK_DISPLAY_MIRROR_Y     0
 
+/*
+ * The time popup is viewed in the opposite orientation to the internal
+ * MAX7219 coordinate system. Rotating the complete 16x8 popup also swaps the
+ * two physical modules: minutes are shown above seconds.
+ */
+#define SAND_CLOCK_TIME_DISPLAY_ROTATE_180 1
+
 #endif /* INC_SAND_CLOCK_CONFIG_H_ */

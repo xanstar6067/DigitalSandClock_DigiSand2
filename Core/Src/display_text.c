@@ -1,6 +1,7 @@
 #include "display_text.h"
 
 #include "max7219_matrix.h"
+#include "sand_clock_config.h"
 
 static const uint8_t font3x5[10][3] = {
     {0x1FU, 0x11U, 0x1FU},
@@ -15,6 +16,14 @@ static const uint8_t font3x5[10][3] = {
     {0x1FU, 0x15U, 0x1DU},
 };
 
+static void display_text_dot(int8_t x, int8_t y) {
+#if SAND_CLOCK_TIME_DISPLAY_ROTATE_180
+    x = (int8_t)(MAX7219_MATRIX_WIDTH - 1U - x);
+    y = (int8_t)(MAX7219_MATRIX_HEIGHT - 1U - y);
+#endif
+    MAX7219_MatrixDot(x, y, true);
+}
+
 void DisplayText_PrintDigit(int8_t x, int8_t y, uint8_t digit) {
     if (digit > 9U) {
         return;
@@ -24,9 +33,8 @@ void DisplayText_PrintDigit(int8_t x, int8_t y, uint8_t digit) {
         uint8_t col = font3x5[digit][col_index];
         for (uint8_t row = 0U; row < 5U; row++) {
             if ((col & (uint8_t)(1U << (4U - row))) != 0U) {
-                MAX7219_MatrixDot((int8_t)(x + 2 - col_index),
-                                  (int8_t)(y + row),
-                                  true);
+                display_text_dot((int8_t)(x + 2 - col_index),
+                                 (int8_t)(y + row));
             }
         }
     }
@@ -53,4 +61,3 @@ void DisplayText_PrintTime(uint16_t seconds) {
     DisplayText_PrintTwoDigits(0, 1, minutes);
     DisplayText_PrintTwoDigits(8, 1, secs);
 }
-
