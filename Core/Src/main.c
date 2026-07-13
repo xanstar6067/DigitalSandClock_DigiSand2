@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "sand_clock.h"
 
 /* USER CODE END Includes */
 
@@ -94,6 +95,7 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
+  SandClock_Init();
 
   /* USER CODE END 2 */
 
@@ -104,6 +106,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    SandClock_Tick();
   }
   /* USER CODE END 3 */
 }
@@ -302,10 +305,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, MAX_7219_DIN_Pin|MAX7219_CS_Pin|MAX7219_CLK_Pin|ULED_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, MAX7219_DIN_Pin|MAX7219_CS_Pin|MAX7219_CLK_Pin|ULED_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : MAX_7219_DIN_Pin MAX7219_CS_Pin MAX7219_CLK_Pin ULED_Pin */
-  GPIO_InitStruct.Pin = MAX_7219_DIN_Pin|MAX7219_CS_Pin|MAX7219_CLK_Pin|ULED_Pin;
+  /*Configure GPIO pins : MAX7219_DIN_Pin MAX7219_CS_Pin MAX7219_CLK_Pin ULED_Pin */
+  GPIO_InitStruct.Pin = MAX7219_DIN_Pin|MAX7219_CS_Pin|MAX7219_CLK_Pin|ULED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -314,7 +317,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : EXT_BTN1_Pin EXT_BTN2_Pin UKEY_Pin */
   GPIO_InitStruct.Pin = EXT_BTN1_Pin|EXT_BTN2_Pin|UKEY_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */

@@ -59,8 +59,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define MAX_7219_DIN_Pin GPIO_PIN_1
-#define MAX_7219_DIN_GPIO_Port GPIOA
+#define MAX7219_DIN_Pin GPIO_PIN_1
+#define MAX7219_DIN_GPIO_Port GPIOA
 #define MAX7219_CS_Pin GPIO_PIN_2
 #define MAX7219_CS_GPIO_Port GPIOA
 #define MAX7219_CLK_Pin GPIO_PIN_3
